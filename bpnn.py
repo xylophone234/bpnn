@@ -15,13 +15,13 @@ def dsigmoid(y):
 
 sigmoid_ufunc=np.vectorize(sigmoid,otypes=[np.float])
 dsigmoid_ufunc=np.vectorize(dsigmoid,otypes=[np.float])
-alpha=0.1
+# alpha=0.3
 
 class Layer:
 	def __init__(self,n_input,n_output):
 		self.n_input=n_input
 		self.n_output=n_output
-		self.w=np.random.rand(n_output,n_input)*0.2
+		self.w=np.random.rand(n_output,n_input)*0.2-0.1
 		self.b=(np.random.rand(n_output)).reshape(-1,1)
 		self.z=None
 		self.input=None
@@ -44,14 +44,14 @@ class Layer:
 		# print('output=,',self.output)
 		return self.output
 
-	def adjust(self,delta,m):
+	def adjust(self,delta,alpha,m):
 		# print('delta',delta)
 		self.delta=delta
 		# self.deltaw=np.dot(self.delta,np.transpose(self.output)).sum(axis=1).reshape(-1,1) 
-		self.deltaw=np.dot(self.delta,np.transpose(self.input))
+		self.deltaw=np.dot(self.delta,np.transpose(self.input))/self.input.shape[1]
 		# self.deltaw=(self.delta*self.input).sum(axis=1).reshape(-1,1)
-		self.deltab=self.delta.sum(axis=1).reshape(-1,1)
-		print (self.deltaw)
+		self.deltab=self.delta.sum(axis=1).reshape(-1,1)/self.input.shape[1]
+		# print (self.deltaw)
 		self.w=self.w+self.deltaw*alpha+m*self.lastDeltaw
 		self.lastDeltaw=self.deltaw
 		# print('b',self.b)
@@ -69,18 +69,16 @@ class BPNN:
 		o=self.outputLayer.forward(h)
 		return o
 
-	def train(self,trainSet,n,m=0.3):
+	def train(self,trainSetx,trainSety,n,alpha=0.1,m=0.3):
 		for i in range(n):
-			for j in range(2):
-				patch=trainSet[:,2*j:2*j+2]
-				o=self.forward(patch[0:-1])
-				# print('o',o)
-				deltao=(patch[-1:]-o)*dsigmoid_ufunc(self.outputLayer.output)
-				print('deltao',deltao)
-				deltah=np.dot(np.transpose(self.outputLayer.w),deltao)*dsigmoid_ufunc(self.hiddenLayer.output)
-				print('deltah',deltah)
-				self.outputLayer.adjust(deltao,m)
-				self.hiddenLayer.adjust(deltah,m)
-				print(o)
-				print(((patch[-1:]-o)*(patch[-1:]-o)).sum())
+			o=self.forward(trainSetx)
+			# print('o',o)
+			deltao=(trainSety-o)*dsigmoid_ufunc(self.outputLayer.output)
+			# print('deltao',deltao)
+			deltah=np.dot(np.transpose(self.outputLayer.w),deltao)*dsigmoid_ufunc(self.hiddenLayer.output)
+			# print('deltah',deltah)
+			self.outputLayer.adjust(deltao,alpha,m)
+			self.hiddenLayer.adjust(deltah,alpha,m)
+			# print(o)
+			print(((trainSety-o)*(trainSety-o)).sum())
 
